@@ -4,7 +4,7 @@ module.exports = function() {
   var sphero = require("sphero");
 
   // Set this to the port the Sphero uses on your computer.
-  var device = sphero("/dev/tty.Sphero-RBR-AMP-SPP");
+  var device = sphero("/dev/tty.Sphero-WOO-RN-SPP");
 
   var safeMode = true; //Turn this off if Sphero is in water or you like to live dangerously!
 
@@ -30,6 +30,102 @@ module.exports = function() {
           handleSwipe(hand);
         }
       });
+
+      my.leapmotion.on('hand', function(hand) {
+
+            var signal, value;
+ 
+
+            if (handStartDirection.length > 0 && handStartPosition.length >0){
+                var horizontal = Math.abs(handStartDirection[0] - hand.direction[0]),
+                vertical = Math.abs(hand.palmPosition[1] - handStartPosition[1]);
+   
+
+                // TURNS
+                if (horizontal > TURN_TRESHOLD) {
+                  signal = handStartDirection[0] - hand.direction[0];
+                  value = (horizontal - TURN_TRESHOLD) * TURN_SPEED_FACTOR;
+
+                  if (signal > 0) {
+                    my.drone.counterClockwise({steps: value});
+                  }
+
+                  if (signal < 0) {
+                    my.drone.clockwise({steps: value});
+                  }
+                }
+
+                // UP and DOWN
+                if (vertical > UP_CONTROL_THRESHOLD) {
+                  if ((hand.palmPosition[1] - handStartPosition[1]) >= 0) {
+                    signal = 1;
+                  } else {
+                    signal = -1;
+                  }
+
+                  value = Math.round(vertical - UP_CONTROL_THRESHOLD) * UP_SPEED_FACTOR;
+
+                  if (signal > 0) {
+                    my.drone.up({steps: value});
+                  }
+
+                  if (signal < 0) {
+                    my.drone.down({steps: value});
+                  }
+                }
+
+                // DIRECTION FRONT/BACK
+            if ((Math.abs(hand.palmNormal[2]) > DIRECTION_THRESHOLD)) {
+              if (hand.palmNormal[2] > 0) {
+                value = Math.abs(
+                  Math.round(hand.palmNormal[2] * 10 + DIRECTION_THRESHOLD) *
+                  DIRECTION_SPEED_FACTOR
+                );
+
+                my.drone.forward({steps: value});
+              }
+
+              if (hand.palmNormal[2] < 0) {
+                value = Math.abs(
+                  Math.round(hand.palmNormal[2] * 10 - DIRECTION_THRESHOLD) *
+                  DIRECTION_SPEED_FACTOR
+                );
+
+                my.drone.backward({steps: value});
+              }
+            }
+
+            // DIRECTION LEFT/RIGHT
+            if (Math.abs(hand.palmNormal[0]) > DIRECTION_THRESHOLD) {
+              if (hand.palmNormal[0] > 0) {
+                value = Math.abs(
+                  Math.round(hand.palmNormal[0] * 10 + DIRECTION_THRESHOLD) *
+                  DIRECTION_SPEED_FACTOR
+                );
+
+                my.drone.left({steps: value});
+              }
+
+              if (hand.palmNormal[0] < 0) {
+                value = Math.abs(
+                  Math.round(hand.palmNormal[0] * 10 - DIRECTION_THRESHOLD) *
+                  DIRECTION_SPEED_FACTOR
+                );
+
+                my.drone.right({steps: value});
+              }
+            }
+
+
+
+            } else {
+                handStartDirection = hand.direction;
+                handStartPosition = hand.palmPosition;
+            }
+            
+
+            
+        });
 
       var handleSwipe = function(hand) {
         var previousFrame = controller.frame(1);
